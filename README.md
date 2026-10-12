@@ -1,6 +1,6 @@
 # Border Weather Observations
 
-A reproducible, research-oriented archive of **observed** NOAA NCEI GHCNh weather measurements for nine initial surface stations in Hidalgo County TX, Cameron County TX, Yuma County AZ, and Imperial County CA.
+A reproducible archive of **observed** NOAA NCEI GHCNh weather measurements for nine initial surface stations in Hidalgo County TX, Cameron County TX, Yuma County AZ, and Imperial County CA.
 
 ## Scope
 
