@@ -7,32 +7,86 @@ import pandas as pd
 FIGURE_DIR = Path("reports/figures")
 FIGURE_DIR.mkdir(parents=True, exist_ok=True)
 
+AUDIT_PATH = Path(
+    "reports/audit/station_variable_year.csv"
+)
+
+HOURLY_PATH = Path(
+    "releases/border-weather-v0.1/hourly.parquet"
+)
+
+STATION_LABELS = {
+    "USW00012959": "McAllen",
+    "USW00012919": "Brownsville",
+    "USI0000KBRO": "Brownsville (parallel source)",
+    "USW00012904": "Harlingen",
+    "USW00012957": "Port Isabel",
+    "USW00003145": "Yuma",
+    "USW00023195": "Yuma (historical source)",
+    "USI0000KLGF": "Laguna AAF",
+    "USI0000KNOZ": "Yuma Aux / Wellton",
+    "USW00003144": "Imperial",
+    "USW00023199": "El Centro",
+}
+
+VARIABLE_LABELS = {
+    "temperature": "Temperature",
+    "dew_point_temperature": "Dew point",
+    "relative_humidity": "Relative humidity",
+    "wind_speed": "Wind speed",
+    "wind_direction": "Wind direction",
+    "wind_gust": "Wind gust",
+    "station_level_pressure": "Station pressure",
+    "sea_level_pressure": "Sea-level pressure",
+    "visibility": "Visibility",
+    "wet_bulb_temperature": "Wet-bulb temperature",
+}
+
 
 def coverage_over_time():
-    audit = pd.read_csv(
-        "reports/audit/station_variable_year.csv"
-    )
+    audit = pd.read_csv(AUDIT_PATH)
 
     df = audit[
         audit["variable"] == "temperature"
     ].copy()
+
+    df["year"] = pd.to_numeric(
+        df["year"],
+        errors="coerce",
+    )
+
+    df = df[
+        df["year"].between(2000, 2026)
+    ]
 
     plt.figure(figsize=(10, 6))
 
     for station_id, group in df.groupby(
         "source_station_id"
     ):
-        group = group.sort_values("year")
+        group = group.sort_values("year").copy()
+
+        # Missing station-years should appear as gaps,
+        # not as artificial zero coverage.
+        group.loc[
+            group["hours_with_observation"] == 0,
+            "hourly_coverage_pct",
+        ] = pd.NA
+
+        label = STATION_LABELS.get(
+            station_id,
+            station_id,
+        )
 
         plt.plot(
             group["year"],
             group["hourly_coverage_pct"],
-            label=station_id,
+            label=label,
         )
 
     plt.xlabel("Year")
     plt.ylabel("Hourly coverage (%)")
-    plt.title("Temperature observation coverage by station")
+    plt.title("Temperature observation coverage")
     plt.ylim(0, 100)
 
     plt.legend(
@@ -60,17 +114,41 @@ def coverage_over_time():
 
 
 def annual_temperature():
-    df = pd.read_parquet(
-        "releases/border-weather-v0.1/"
-        "monthly.parquet"
+    df = pd.read_parquet(HOURLY_PATH)
+
+    df["hour_utc"] = pd.to_datetime(
+        df["hour_utc"],
+        utc=True,
+        errors="coerce",
     )
 
-    df["month_start_local"] = pd.to_datetime(
-        df["month_start_local"]
+    df["year"] = df["hour_utc"].dt.year
+
+    # Use complete years only.
+    df = df[
+        df["year"].between(2000, 2025)
+    ].copy()
+
+    df["temperature_mean"] = pd.to_numeric(
+        df["temperature_mean"],
+        errors="coerce",
     )
 
-    df["year"] = (
-        df["month_start_local"].dt.year
+    df["temperature_n"] = pd.to_numeric(
+        df["temperature_n"],
+        errors="coerce",
+    ).fillna(0)
+
+    df = df[
+        (df["temperature_n"] > 0)
+        & df["temperature_mean"].notna()
+    ].copy()
+
+    # Weight hourly means by the number of
+    # underlying temperature reports in that hour.
+    df["weighted_temperature"] = (
+        df["temperature_mean"]
+        * df["temperature_n"]
     )
 
     annual = (
@@ -80,8 +158,22 @@ def annual_temperature():
                 "year",
             ],
             as_index=False,
-        )["temperature_mean"]
-        .mean()
+        )
+        .agg(
+            weighted_sum=(
+                "weighted_temperature",
+                "sum",
+            ),
+            observation_count=(
+                "temperature_n",
+                "sum",
+            ),
+        )
+    )
+
+    annual["temperature_mean"] = (
+        annual["weighted_sum"]
+        / annual["observation_count"]
     )
 
     plt.figure(figsize=(10, 6))
@@ -91,15 +183,22 @@ def annual_temperature():
     ):
         group = group.sort_values("year")
 
+        label = STATION_LABELS.get(
+            station_id,
+            station_id,
+        )
+
         plt.plot(
             group["year"],
             group["temperature_mean"],
-            label=station_id,
+            label=label,
         )
 
     plt.xlabel("Year")
     plt.ylabel("Mean temperature (°C)")
-    plt.title("Annual mean temperature by station")
+    plt.title(
+        "Annual mean observed temperature"
+    )
 
     plt.legend(
         fontsize=8,
@@ -126,31 +225,43 @@ def annual_temperature():
 
 
 def coverage_by_variable():
-    audit = pd.read_csv(
-        "reports/audit/station_variable_year.csv"
-    )
+    audit = pd.read_csv(AUDIT_PATH)
+
+    df = audit[
+        audit["variable"].isin(
+            VARIABLE_LABELS.keys()
+        )
+    ].copy()
 
     summary = (
-        audit.groupby(
+        df.groupby(
             "variable",
             as_index=False,
         )["hourly_coverage_pct"]
         .mean()
-        .sort_values(
-            "hourly_coverage_pct"
-        )
     )
 
-    plt.figure(figsize=(8, 6))
+    summary["label"] = (
+        summary["variable"]
+        .map(VARIABLE_LABELS)
+    )
+
+    summary = summary.sort_values(
+        "hourly_coverage_pct"
+    )
+
+    plt.figure(figsize=(8, 5.5))
 
     plt.barh(
-        summary["variable"],
+        summary["label"],
         summary["hourly_coverage_pct"],
     )
 
     plt.xlabel("Mean hourly coverage (%)")
     plt.ylabel("")
-    plt.title("Average data coverage by variable")
+    plt.title(
+        "Average observation coverage by variable"
+    )
     plt.xlim(0, 100)
 
     plt.tight_layout()
