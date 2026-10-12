@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "border-weather"
 version = "0.1.0"
-description = "Research-ready archive of observed NOAA GHCNh weather measurements for selected U.S. border counties."
+description = "Archive of observed NOAA GHCNh weather measurements for selected US border counties."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
