@@ -1,10 +1,8 @@
 # Border Weather
 
-A reproducible pipeline for collecting and summarizing **observed NOAA/NWS weather data** for selected U.S. border-county weather stations.
+Pipeline for collecting and summarizing **observed NOAA/NWS weather data** for selected U.S. border-county weather stations.
 
-## What this project does
-
-The pipeline:
+## Pipeline
 
 - downloads historical and current observed weather data
 - preserves NOAA source station IDs separately
@@ -68,7 +66,7 @@ contains station-variable-year completeness metrics, including:
 
 ## Releases
 
-GitHub Releases contain ready-to-analyze data so collaborators do not need to run the ingestion pipeline themselves.
+GitHub Releases contain ready-to-analyze data so yall do not need to run the ingestion pipeline yourself.
 
 Recommended download:
 
