@@ -15,19 +15,24 @@ HOURLY_PATH = Path(
     "releases/border-weather-v0.1/hourly.parquet"
 )
 
+
 STATION_LABELS = {
-    "USW00012959": "McAllen",
-    "USW00012919": "Brownsville",
-    "USI0000KBRO": "Brownsville (parallel source)",
-    "USW00012904": "Harlingen",
-    "USW00012957": "Port Isabel",
-    "USW00003145": "Yuma",
-    "USW00023195": "Yuma (historical source)",
-    "USI0000KLGF": "Laguna AAF",
-    "USI0000KNOZ": "Yuma Aux / Wellton",
-    "USW00003144": "Imperial",
-    "USW00023199": "El Centro",
+    "USW00012959": "McAllen Miller Intl Airport",
+    "USW00012919": "Brownsville/South Padre Island Intl Airport",
+    "USI0000KBRO": (
+        "Brownsville/South Padre Island Intl Airport "
+        "(parallel source)"
+    ),
+    "USW00012904": "Valley Intl Airport (Harlingen)",
+    "USW00012957": "Port Isabel–Cameron County Airport",
+    "USW00003145": "Yuma Intl Airport",
+    "USW00023195": "Yuma Airport (historical source)",
+    "USI0000KLGF": "Laguna Army Airfield",
+    "USI0000KNOZ": "Yuma Auxiliary Airfield / Wellton",
+    "USW00003144": "Imperial County Airport",
+    "USW00023199": "El Centro Naval Air Facility",
 }
+
 
 VARIABLE_LABELS = {
     "temperature": "Temperature",
@@ -55,18 +60,28 @@ def coverage_over_time():
         errors="coerce",
     )
 
+    df["hourly_coverage_pct"] = pd.to_numeric(
+        df["hourly_coverage_pct"],
+        errors="coerce",
+    )
+
+    df["hours_with_observation"] = pd.to_numeric(
+        df["hours_with_observation"],
+        errors="coerce",
+    )
+
     df = df[
         df["year"].between(2000, 2026)
-    ]
+    ].copy()
 
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(11, 6))
 
     for station_id, group in df.groupby(
         "source_station_id"
     ):
         group = group.sort_values("year").copy()
 
-        # Missing station-years should appear as gaps,
+        # Years with no observations should appear as gaps,
         # not as artificial zero coverage.
         group.loc[
             group["hours_with_observation"] == 0,
@@ -86,11 +101,11 @@ def coverage_over_time():
 
     plt.xlabel("Year")
     plt.ylabel("Hourly coverage (%)")
-    plt.title("Temperature observation coverage")
+    plt.title("Temperature observation coverage by station")
     plt.ylim(0, 100)
 
     plt.legend(
-        fontsize=8,
+        fontsize=7.5,
         ncol=2,
         frameon=False,
     )
@@ -122,7 +137,9 @@ def annual_temperature():
         errors="coerce",
     )
 
-    df["year"] = df["hour_utc"].dt.year
+    df["year"] = (
+        df["hour_utc"].dt.year
+    )
 
     # Use complete years only.
     df = df[
@@ -144,7 +161,7 @@ def annual_temperature():
         & df["temperature_mean"].notna()
     ].copy()
 
-    # Weight hourly means by the number of
+    # Weight each hourly mean by the number of
     # underlying temperature reports in that hour.
     df["weighted_temperature"] = (
         df["temperature_mean"]
@@ -176,7 +193,7 @@ def annual_temperature():
         / annual["observation_count"]
     )
 
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(11, 6))
 
     for station_id, group in annual.groupby(
         "source_station_id"
@@ -196,12 +213,10 @@ def annual_temperature():
 
     plt.xlabel("Year")
     plt.ylabel("Mean temperature (°C)")
-    plt.title(
-        "Annual mean observed temperature"
-    )
+    plt.title("Annual mean observed temperature by station")
 
     plt.legend(
-        fontsize=8,
+        fontsize=7.5,
         ncol=2,
         frameon=False,
     )
@@ -233,6 +248,11 @@ def coverage_by_variable():
         )
     ].copy()
 
+    df["hourly_coverage_pct"] = pd.to_numeric(
+        df["hourly_coverage_pct"],
+        errors="coerce",
+    )
+
     summary = (
         df.groupby(
             "variable",
@@ -259,9 +279,7 @@ def coverage_by_variable():
 
     plt.xlabel("Mean hourly coverage (%)")
     plt.ylabel("")
-    plt.title(
-        "Average observation coverage by variable"
-    )
+    plt.title("Average observation coverage by variable")
     plt.xlim(0, 100)
 
     plt.tight_layout()
