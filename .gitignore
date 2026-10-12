@@ -1,0 +1,48 @@
+# Python virtual environment
+.venv/
+venv/
+
+# Python cache / compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python package/build artifacts
+*.egg-info/
+build/
+dist/
+
+# Test / tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# VS Code / editor files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Raw NOAA downloads
+data/raw/ghcnh/*
+!data/raw/ghcnh/.gitkeep
+
+# Processed research data
+data/processed/
+
+# Local DuckDB databases
+data/border_weather.duckdb
+*.duckdb
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Optional local environment files
+.env
+.env.*

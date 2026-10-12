@@ -1,0 +1,7 @@
+cff-version: 1.2.0
+message: "If you use this software or a released dataset snapshot, please cite the repository release and NOAA NCEI GHCNh."
+title: "Border Weather Observations"
+type: software
+version: 0.1.0
+date-released: 2026-10-11
+license: MIT

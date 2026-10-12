@@ -1,0 +1,15 @@
+source:
+  name: NOAA NCEI GHCNh
+  base_url: https://www.ncei.noaa.gov/oa/global-historical-climatology-network/hourly/access/by-year
+  start_year: 2000
+
+storage:
+  raw_dir: data/raw/ghcnh
+  observations_dir: data/processed/observations
+  audit_dir: reports/audit
+  manifest_file: data/metadata/ingestion_manifest.parquet
+  duckdb_file: data/border_weather.duckdb
+
+update:
+  # Daily v1 strategy: re-download every configured station identifier for the current year.
+  refresh_current_year: true

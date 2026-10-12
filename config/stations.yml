@@ -1,0 +1,110 @@
+# Initial nine-station research cohort.
+# Identifier relationships marked "verify" should be re-checked against the live
+# GHCNh inventory before a publication-quality frozen release.
+stations:
+  - site_key: mcallen
+    station_name: McAllen Miller International Airport
+    county: Hidalgo
+    county_fips: "48215"
+    state: TX
+    timezone: America/Chicago
+    tier: core
+    identifiers:
+      - ghcnh_id: USW00012959
+        role: primary
+
+  - site_key: brownsville
+    station_name: Brownsville/South Padre Island International Airport
+    county: Cameron
+    county_fips: "48061"
+    state: TX
+    timezone: America/Chicago
+    tier: core
+    identifiers:
+      - ghcnh_id: USW00012919
+        role: historical_candidate
+        verify: true
+      - ghcnh_id: USI0000KBRO
+        role: current_candidate
+        verify: true
+
+  - site_key: harlingen
+    station_name: Valley International Airport
+    county: Cameron
+    county_fips: "48061"
+    state: TX
+    timezone: America/Chicago
+    tier: core
+    identifiers:
+      - ghcnh_id: USW00012904
+        role: primary
+
+  - site_key: port_isabel
+    station_name: Port Isabel-Cameron County Airport
+    county: Cameron
+    county_fips: "48061"
+    state: TX
+    timezone: America/Chicago
+    tier: core
+    identifiers:
+      - ghcnh_id: USW00012957
+        role: primary
+
+  - site_key: yuma
+    station_name: Yuma International Airport / MCAS
+    county: Yuma
+    county_fips: "04027"
+    state: AZ
+    timezone: America/Phoenix
+    tier: core
+    identifiers:
+      - ghcnh_id: USW00023195
+        role: historical_candidate
+        verify: true
+      - ghcnh_id: USW00003145
+        role: current_candidate
+        verify: true
+
+  - site_key: laguna
+    station_name: Laguna Army Airfield
+    county: Yuma
+    county_fips: "04027"
+    state: AZ
+    timezone: America/Phoenix
+    tier: supplemental
+    identifiers:
+      - ghcnh_id: USI0000KLGF
+        role: primary
+
+  - site_key: yuma_aux
+    station_name: Yuma Auxiliary Airfield / Wellton
+    county: Yuma
+    county_fips: "04027"
+    state: AZ
+    timezone: America/Phoenix
+    tier: supplemental
+    identifiers:
+      - ghcnh_id: USI0000KNOZ
+        role: primary
+
+  - site_key: imperial
+    station_name: Imperial County Airport
+    county: Imperial
+    county_fips: "06025"
+    state: CA
+    timezone: America/Los_Angeles
+    tier: core
+    identifiers:
+      - ghcnh_id: USW00003144
+        role: primary
+
+  - site_key: el_centro
+    station_name: El Centro Naval Air Facility
+    county: Imperial
+    county_fips: "06025"
+    state: CA
+    timezone: America/Los_Angeles
+    tier: core
+    identifiers:
+      - ghcnh_id: USW00023199
+        role: primary

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "border-weather"
+version = "0.1.0"
+description = "Research-ready archive of observed NOAA GHCNh weather measurements for selected U.S. border counties."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Border Weather contributors"}]
+dependencies = [
+  "pandas>=2.2",
+  "pyarrow>=16",
+  "requests>=2.32",
+  "PyYAML>=6.0",
+  "typer>=0.12",
+  "duckdb>=1.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+border-weather = "border_weather.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
