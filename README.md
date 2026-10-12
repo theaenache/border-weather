@@ -1,96 +1,100 @@
-# Border Weather Observations
+# Border Weather
 
-A reproducible archive of **observed** NOAA NCEI GHCNh weather measurements for nine initial surface stations in Hidalgo County TX, Cameron County TX, Yuma County AZ, and Imperial County CA.
+A reproducible pipeline for collecting and summarizing **observed NOAA/NWS weather data** for selected U.S. border-county weather stations.
 
-## Scope
+## What this project does
 
-- No forecasts, interpolation, imputation, or modeled WBGT.
-- **2000-present**. (alvaro lmk if you want this changed)
-- Daily automated current year refresh.
-- Raw NOAA rows and provenance are preserved.
-- Canonical Parquet output is queryable with Python, R, DuckDB, or other Arrow compatible tools.
+The pipeline:
 
-## Initial sites
+- downloads historical and current observed weather data
+- preserves NOAA source station IDs separately
+- keeps missing observations as missing
+- does not interpolate or model missing values
+- creates hourly, daily, weekly, and monthly summary tables
+- audits station and variable coverage over time
+- builds shareable Parquet and DuckDB releases
 
-| Site key | County | Station |
-|---|---|---|
-| `mcallen` | Hidalgo, TX | McAllen Miller International Airport |
-| `brownsville` | Cameron, TX | Brownsville/South Padre Island International Airport |
-| `harlingen` | Cameron, TX | Valley International Airport |
-| `port_isabel` | Cameron, TX | Port Isabel-Cameron County Airport |
-| `yuma` | Yuma, AZ | Yuma International / MCAS |
-| `laguna` | Yuma, AZ | Laguna Army Airfield |
-| `yuma_aux` | Yuma, AZ | Yuma Auxiliary / Wellton |
-| `imperial` | Imperial, CA | Imperial County Airport |
-| `el_centro` | Imperial, CA | El Centro Naval Air Facility |
+## Variables
 
-See `config/stations.yml` for GHCNh identifiers. Brownsville and Yuma historical/current identifier relationships are deliberately marked for final live-inventory verification before a publication-quality release.
+Summary tables currently include observed measures such as:
 
-## Install
+- temperature
+- dew point
+- relative humidity
+- wind speed
+- wind gust
+- wind direction
+- station pressure
+- sea-level pressure
+- visibility
+- wet-bulb temperature, where available
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e '.[dev]'
-```
+Precipitation observations are preserved in the source data, but precipitation totals are not yet included in the summary tables because NOAA reports multiple overlapping accumulation periods.
 
-## Historical backfill
+## Data structure
 
-```bash
-border-weather backfill --start 2000
-```
+Parallel NOAA source IDs are intentionally kept separate.
 
-A single-site test run:
+Use:
 
-```bash
-border-weather backfill --start 2025 --end 2025 --station mcallen
-```
+`site_key + source_station_id`
 
-## Daily update
+when grouping or comparing observations.
 
-```bash
-border-weather update
-border-weather audit
-border-weather build-db
-```
+This avoids silently merging different NOAA reporting streams.
 
-GitHub Actions runs the same sequence daily at 11:23 UTC and can also be triggered manually from the Actions tab. Times will be recorded in UTC due to varying time zones. 
+## Summary tables
 
-## Query
+The release includes:
 
-```python
-import duckdb
+- `hourly.parquet`
+- `daily.parquet`
+- `weekly.parquet`
+- `monthly.parquet`
 
-con = duckdb.connect("data/border_weather.duckdb")
-df = con.sql("""
-    SELECT site_key, timestamp_utc, temperature, wind_speed, wind_direction
-    FROM observations
-    WHERE site_key = 'mcallen'
-      AND timestamp_utc >= '2025-01-01'
-    ORDER BY timestamp_utc
-""").df()
-```
+Parquet is used because it is compact, fast, and preserves timestamps and numeric data types well. These files can be opened directly in Python, R, DuckDB, and many other analysis tools.
 
-## Doing a quick station audit rn! Format:
+## Data quality
 
-```bash
-border-weather audit
-```
+`reports/audit/station_variable_year.csv`
 
-Produces:
+contains station-variable-year completeness metrics, including:
 
-- `reports/audit/station_variable_year.parquet`
-- `reports/audit/station_variable_year.csv`
+- hourly coverage
+- observed hours
+- expected hours
+- reporting frequency
+- maximum observation gaps
 
-The initial audit reports **record presence**, not yet true expected-hour completeness. GHCNh may contain multiple reports per hour; expected-hour coverage will be implemented after report-type selection rules are established from the backfilled records. Work in progress!
+## Releases
 
+GitHub Releases contain ready-to-analyze data so collaborators do not need to run the ingestion pipeline themselves.
 
-Station/year files follow this pattern:
+Recommended download:
 
-```text
-https://www.ncei.noaa.gov/oa/global-historical-climatology-network/hourly/access/by-year/<YEAR>/psv/GHCNh_<STATION>_<YEAR>.psv
-```
+`border-weather-v0.1-data.zip`
 
-## License
+An optional DuckDB database is also provided for SQL-based analysis.
 
-Code: MIT. NOAA data remain subject to NOAA/NCEI terms and attribution practices.
+## Reproducibility
+
+The repository contains the code used to:
+
+1. ingest NOAA observations
+2. build canonical station-level datasets
+3. audit coverage
+4. create temporal summaries
+5. generate shareable research releases
+
+Generated raw and processed datasets are not stored in normal Git history because of their size.
+
+## Current scope
+
+The current archive covers selected stations in:
+
+- Hidalgo County, Texas
+- Cameron County, Texas
+- Yuma County, Arizona
+- Imperial County, California
+
+Historical coverage extends back to 2000 where available.
