@@ -46,3 +46,9 @@ data/border_weather.duckdb
 # Optional local environment files
 .env
 .env.*
+
+# Generated release artifacts
+releases/
+
+# Exploratory station-overlap outputs
+reports/overlap/
