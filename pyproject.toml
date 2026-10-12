@@ -17,6 +17,7 @@ dependencies = [
   "PyYAML>=6.0",
   "typer>=0.12",
   "duckdb>=1.1",
+  "matplotlib"
 ]
 
 [project.optional-dependencies]
