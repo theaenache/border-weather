@@ -15,8 +15,8 @@ AUDIT_PATH = Path(
     "reports/audit/station_variable_year.csv"
 )
 
-WEEKLY_PATH = Path(
-    "releases/border-weather-v0.1/weekly.parquet"
+DAILY_PATH = Path(
+    "releases/border-weather-v0.1/daily.parquet"
 )
 
 MONTHLY_PATH = Path(
@@ -29,7 +29,7 @@ ANNUAL_PATH = Path(
 
 
 # ---------------------------------------------------------
-# Human-readable labels
+# Labels
 # ---------------------------------------------------------
 
 STATION_LABELS = {
@@ -49,7 +49,6 @@ STATION_LABELS = {
     "USW00023199": "El Centro Naval Air Facility",
 }
 
-
 VARIABLE_LABELS = {
     "temperature": "Temperature",
     "dew_point_temperature": "Dew point",
@@ -64,10 +63,6 @@ VARIABLE_LABELS = {
 }
 
 
-# ---------------------------------------------------------
-# Helper
-# ---------------------------------------------------------
-
 def _station_label(station_id):
     return STATION_LABELS.get(
         station_id,
@@ -76,56 +71,43 @@ def _station_label(station_id):
 
 
 # ---------------------------------------------------------
-# 1. Temperature coverage over time
+# 1. Annual mean temperature
 # ---------------------------------------------------------
 
-def coverage_over_time():
-    audit = pd.read_csv(AUDIT_PATH)
-
-    df = audit[
-        audit["variable"] == "temperature"
-    ].copy()
+def annual_temperature():
+    df = pd.read_parquet(ANNUAL_PATH)
 
     df["year"] = pd.to_numeric(
         df["year"],
         errors="coerce",
     )
 
-    df["hourly_coverage_pct"] = pd.to_numeric(
-        df["hourly_coverage_pct"],
+    df["annual_mean_temperature"] = pd.to_numeric(
+        df["annual_mean_temperature"],
         errors="coerce",
     )
 
-    df["hours_with_observation"] = pd.to_numeric(
-        df["hours_with_observation"],
-        errors="coerce",
-    )
+    df = df[
+        df["year"].notna()
+        & df["annual_mean_temperature"].notna()
+    ].copy()
 
     plt.figure(figsize=(11, 6))
 
     for station_id, group in df.groupby(
         "source_station_id"
     ):
-        group = group.sort_values("year").copy()
-
-        # No observations = gap, not zero coverage.
-        group.loc[
-            group["hours_with_observation"] == 0,
-            "hourly_coverage_pct",
-        ] = pd.NA
+        group = group.sort_values("year")
 
         plt.plot(
             group["year"],
-            group["hourly_coverage_pct"],
+            group["annual_mean_temperature"],
             label=_station_label(station_id),
         )
 
     plt.xlabel("Year")
-    plt.ylabel("Hourly coverage (%)")
-    plt.title(
-        "Temperature observation coverage by station"
-    )
-    plt.ylim(0, 100)
+    plt.ylabel("Mean temperature (°C)")
+    plt.title("Annual mean observed temperature")
 
     plt.legend(
         fontsize=7.5,
@@ -135,10 +117,7 @@ def coverage_over_time():
 
     plt.tight_layout()
 
-    path = (
-        FIGURE_DIR
-        / "temperature_coverage_by_station.png"
-    )
+    path = FIGURE_DIR / "annual_mean_temperature.png"
 
     plt.savefig(
         path,
@@ -152,7 +131,7 @@ def coverage_over_time():
 
 
 # ---------------------------------------------------------
-# 2. Coverage by variable
+# 2. Average coverage by variable
 # ---------------------------------------------------------
 
 def coverage_by_variable():
@@ -195,17 +174,12 @@ def coverage_by_variable():
 
     plt.xlabel("Mean hourly coverage (%)")
     plt.ylabel("")
-    plt.title(
-        "Average observation coverage by variable"
-    )
+    plt.title("Average observation coverage by variable")
     plt.xlim(0, 100)
 
     plt.tight_layout()
 
-    path = (
-        FIGURE_DIR
-        / "coverage_by_variable.png"
-    )
+    path = FIGURE_DIR / "coverage_by_variable.png"
 
     plt.savefig(
         path,
@@ -219,61 +193,82 @@ def coverage_by_variable():
 
 
 # ---------------------------------------------------------
-# 3. Weekly temperature
+# 3. Station-year coverage heatmap
 # ---------------------------------------------------------
 
-def weekly_temperature():
-    df = pd.read_parquet(WEEKLY_PATH)
+def coverage_heatmap():
+    audit = pd.read_csv(AUDIT_PATH)
 
-    df["week_start_local"] = pd.to_datetime(
-        df["week_start_local"],
-        errors="coerce",
-    )
-
-    df["temperature_mean"] = pd.to_numeric(
-        df["temperature_mean"],
-        errors="coerce",
-    )
-
-    df = df[
-        df["week_start_local"].notna()
-        & df["temperature_mean"].notna()
+    df = audit[
+        audit["variable"] == "temperature"
     ].copy()
+
+    df["year"] = pd.to_numeric(
+        df["year"],
+        errors="coerce",
+    )
+
+    df["hourly_coverage_pct"] = pd.to_numeric(
+        df["hourly_coverage_pct"],
+        errors="coerce",
+    )
+
+    df["station_label"] = (
+        df["source_station_id"]
+        .map(STATION_LABELS)
+        .fillna(df["source_station_id"])
+    )
+
+    pivot = df.pivot_table(
+        index="station_label",
+        columns="year",
+        values="hourly_coverage_pct",
+        aggfunc="mean",
+    )
 
     plt.figure(figsize=(12, 6))
 
-    for station_id, group in df.groupby(
-        "source_station_id"
-    ):
-        group = group.sort_values(
-            "week_start_local"
-        )
-
-        plt.plot(
-            group["week_start_local"],
-            group["temperature_mean"],
-            label=_station_label(station_id),
-            linewidth=0.9,
-        )
-
-    plt.xlabel("Week")
-    plt.ylabel("Mean temperature (°C)")
-    plt.title(
-        "Weekly mean observed temperature"
+    image = plt.imshow(
+        pivot,
+        aspect="auto",
+        interpolation="nearest",
+        vmin=0,
+        vmax=100,
     )
 
-    plt.legend(
-        fontsize=7,
-        ncol=2,
-        frameon=False,
+    plt.yticks(
+        range(len(pivot.index)),
+        pivot.index,
+        fontsize=8,
     )
+
+    years = list(pivot.columns)
+
+    step = 2
+    tick_positions = list(
+        range(0, len(years), step)
+    )
+
+    plt.xticks(
+        tick_positions,
+        [
+            int(years[i])
+            for i in tick_positions
+        ],
+        rotation=45,
+        ha="right",
+    )
+
+    plt.xlabel("Year")
+    plt.ylabel("")
+    plt.title("Temperature observation coverage by station and year")
+
+    colorbar = plt.colorbar(image)
+    colorbar.set_label("Hourly coverage (%)")
 
     plt.tight_layout()
 
-    path = (
-        FIGURE_DIR
-        / "weekly_mean_temperature.png"
-    )
+    path = FIGURE_DIR / "temperature_coverage_heatmap.png"
 
     plt.savefig(
         path,
@@ -287,10 +282,10 @@ def weekly_temperature():
 
 
 # ---------------------------------------------------------
-# 4. Monthly temperature
+# 4. Seasonal temperature profile
 # ---------------------------------------------------------
 
-def monthly_temperature():
+def seasonal_temperature_profile():
     df = pd.read_parquet(MONTHLY_PATH)
 
     df["month_start_local"] = pd.to_datetime(
@@ -308,40 +303,56 @@ def monthly_temperature():
         & df["temperature_mean"].notna()
     ].copy()
 
-    plt.figure(figsize=(12, 6))
+    df["month"] = (
+        df["month_start_local"].dt.month
+    )
 
-    for station_id, group in df.groupby(
+    seasonal = (
+        df.groupby(
+            [
+                "source_station_id",
+                "month",
+            ],
+            as_index=False,
+        )["temperature_mean"]
+        .mean()
+    )
+
+    plt.figure(figsize=(10, 6))
+
+    for station_id, group in seasonal.groupby(
         "source_station_id"
     ):
-        group = group.sort_values(
-            "month_start_local"
-        )
+        group = group.sort_values("month")
 
         plt.plot(
-            group["month_start_local"],
+            group["month"],
             group["temperature_mean"],
             label=_station_label(station_id),
-            linewidth=1.1,
         )
+
+    plt.xticks(
+        range(1, 13),
+        [
+            "Jan", "Feb", "Mar", "Apr",
+            "May", "Jun", "Jul", "Aug",
+            "Sep", "Oct", "Nov", "Dec",
+        ],
+    )
 
     plt.xlabel("Month")
     plt.ylabel("Mean temperature (°C)")
-    plt.title(
-        "Monthly mean observed temperature"
-    )
+    plt.title("Seasonal temperature profile")
 
     plt.legend(
-        fontsize=7,
+        fontsize=7.5,
         ncol=2,
         frameon=False,
     )
 
     plt.tight_layout()
 
-    path = (
-        FIGURE_DIR
-        / "monthly_mean_temperature.png"
-    )
+    path = FIGURE_DIR / "seasonal_temperature_profile.png"
 
     plt.savefig(
         path,
@@ -355,10 +366,10 @@ def monthly_temperature():
 
 
 # ---------------------------------------------------------
-# 5. Annual temperature
+# 5. Annual temperature anomaly
 # ---------------------------------------------------------
 
-def annual_temperature():
+def annual_temperature_anomaly():
     df = pd.read_parquet(ANNUAL_PATH)
 
     df["year"] = pd.to_numeric(
@@ -376,6 +387,18 @@ def annual_temperature():
         & df["annual_mean_temperature"].notna()
     ].copy()
 
+    long_term_mean = (
+        df.groupby("source_station_id")[
+            "annual_mean_temperature"
+        ]
+        .transform("mean")
+    )
+
+    df["temperature_anomaly"] = (
+        df["annual_mean_temperature"]
+        - long_term_mean
+    )
+
     plt.figure(figsize=(11, 6))
 
     for station_id, group in df.groupby(
@@ -385,14 +408,19 @@ def annual_temperature():
 
         plt.plot(
             group["year"],
-            group["annual_mean_temperature"],
+            group["temperature_anomaly"],
             label=_station_label(station_id),
         )
 
+    plt.axhline(
+        0,
+        linewidth=1,
+    )
+
     plt.xlabel("Year")
-    plt.ylabel("Mean temperature (°C)")
+    plt.ylabel("Temperature anomaly (°C)")
     plt.title(
-        "Annual mean observed temperature"
+        "Annual temperature relative to each station's observed mean"
     )
 
     plt.legend(
@@ -403,10 +431,7 @@ def annual_temperature():
 
     plt.tight_layout()
 
-    path = (
-        FIGURE_DIR
-        / "annual_mean_temperature.png"
-    )
+    path = FIGURE_DIR / "annual_temperature_anomaly.png"
 
     plt.savefig(
         path,
@@ -420,15 +445,102 @@ def annual_temperature():
 
 
 # ---------------------------------------------------------
-# Build everything
+# 6. Extreme heat days
+# ---------------------------------------------------------
+
+def extreme_heat_days(
+    threshold_c=35.0,
+):
+    df = pd.read_parquet(DAILY_PATH)
+
+    df["local_date"] = pd.to_datetime(
+        df["local_date"],
+        errors="coerce",
+    )
+
+    df["temperature_max"] = pd.to_numeric(
+        df["temperature_max"],
+        errors="coerce",
+    )
+
+    df = df[
+        df["local_date"].notna()
+        & df["temperature_max"].notna()
+    ].copy()
+
+    df["year"] = (
+        df["local_date"].dt.year
+    )
+
+    df["extreme_heat_day"] = (
+        df["temperature_max"] >= threshold_c
+    )
+
+    annual = (
+        df.groupby(
+            [
+                "source_station_id",
+                "year",
+            ],
+            as_index=False,
+        )["extreme_heat_day"]
+        .sum()
+    )
+
+    plt.figure(figsize=(11, 6))
+
+    for station_id, group in annual.groupby(
+        "source_station_id"
+    ):
+        group = group.sort_values("year")
+
+        plt.plot(
+            group["year"],
+            group["extreme_heat_day"],
+            label=_station_label(station_id),
+        )
+
+    plt.xlabel("Year")
+    plt.ylabel(
+        f"Days with max temperature ≥ {threshold_c:.0f}°C"
+    )
+
+    plt.title(
+        f"Extreme heat days per year (≥ {threshold_c:.0f}°C)"
+    )
+
+    plt.legend(
+        fontsize=7.5,
+        ncol=2,
+        frameon=False,
+    )
+
+    plt.tight_layout()
+
+    path = FIGURE_DIR / "extreme_heat_days_per_year.png"
+
+    plt.savefig(
+        path,
+        dpi=200,
+        bbox_inches="tight",
+    )
+
+    plt.close()
+
+    print(path)
+
+
+# ---------------------------------------------------------
+# Build all figures
 # ---------------------------------------------------------
 
 def build_all_figures():
-    coverage_over_time()
-    coverage_by_variable()
-    weekly_temperature()
-    monthly_temperature()
     annual_temperature()
+    coverage_by_variable()
+    coverage_heatmap()
+    seasonal_temperature_profile()
+    annual_temperature_anomaly()
+    extreme_heat_days()
 
 
 if __name__ == "__main__":
